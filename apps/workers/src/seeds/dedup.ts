@@ -174,4 +174,6 @@ export async function runDedup(): Promise<void> {
   console.log(`Dedup complete. ${remaining} spirits remaining in database.`);
 }
 
-runDedup().then(() => prisma.$disconnect()).catch(console.error);
+if (import.meta.url === `file://${process.argv[1]}`) {
+  runDedup().then(() => prisma.$disconnect()).catch(console.error);
+}

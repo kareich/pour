@@ -236,5 +236,7 @@ export async function seedFromLCBO(csvPath: string): Promise<void> {
   );
 }
 
-const csvPath = process.argv[2] ?? path.join(__dirname, '../../../../data/lcbo-products.csv');
-seedFromLCBO(csvPath).then(() => prisma.$disconnect()).catch(console.error);
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
+  const csvPath = process.argv[2] ?? path.join(__dirname, '../../../../data/lcbo-products.csv');
+  seedFromLCBO(csvPath).then(() => prisma.$disconnect()).catch(console.error);
+}

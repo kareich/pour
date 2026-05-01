@@ -180,5 +180,7 @@ export async function seedFromWSLCB(tsvPath: string): Promise<void> {
   console.log(`\nWSLCB seed complete: ${inserted} spirits, ${barcodesLinked} barcodes, ${skipped} skipped`);
 }
 
-const tsvPath = process.argv[2] ?? path.join(__dirname, '../../../../data/wslcb-price-list.tsv');
-seedFromWSLCB(tsvPath).then(() => prisma.$disconnect()).catch(console.error);
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
+  const tsvPath = process.argv[2] ?? path.join(__dirname, '../../../../data/wslcb-price-list.tsv');
+  seedFromWSLCB(tsvPath).then(() => prisma.$disconnect()).catch(console.error);
+}

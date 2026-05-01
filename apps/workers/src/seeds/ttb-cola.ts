@@ -103,7 +103,7 @@ async function ensureDistillery(name: string): Promise<string> {
 export async function seedFromTTB(csvPath: string): Promise<void> {
   if (!existsSync(csvPath)) {
     console.log(`TTB CSV not found at ${csvPath}. Download from ttb.gov/public-data/cola-registry`);
-    console.log('Skipping TTB seed. Run: npm run seed:ttb -- --download to auto-download.');
+    console.log('Skipping TTB seed. Download the CSV and re-run.');
     return;
   }
 
@@ -184,6 +184,7 @@ export async function seedFromTTB(csvPath: string): Promise<void> {
   console.log(`\nTTB seed complete: ${inserted} inserted, ${skipped} skipped`);
 }
 
-// Run directly
-const csvPath = process.argv[2] ?? path.join(__dirname, '../../../../data/ttb-cola.csv');
-seedFromTTB(csvPath).then(() => prisma.$disconnect()).catch(console.error);
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
+  const csvPath = process.argv[2] ?? path.join(__dirname, '../../../../data/ttb-cola.csv');
+  seedFromTTB(csvPath).then(() => prisma.$disconnect()).catch(console.error);
+}

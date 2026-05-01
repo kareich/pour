@@ -140,5 +140,7 @@ export async function runR2ImagePipeline(options: { batchSize?: number; dryRun?:
   console.log(`\nR2 image pipeline complete: ${uploaded} uploaded, ${failed} failed`);
 }
 
-const dryRun = process.argv.includes('--dry-run');
-runR2ImagePipeline({ dryRun }).then(() => prisma.$disconnect()).catch(console.error);
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const dryRun = process.argv.includes('--dry-run');
+  runR2ImagePipeline({ dryRun }).then(() => prisma.$disconnect()).catch(console.error);
+}

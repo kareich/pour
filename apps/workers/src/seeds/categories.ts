@@ -140,4 +140,6 @@ async function main() {
   console.log(`Done: ${count} categories seeded`);
 }
 
-main().then(() => prisma.$disconnect()).catch(console.error);
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
+  main().then(() => prisma.$disconnect()).catch(console.error);
+}

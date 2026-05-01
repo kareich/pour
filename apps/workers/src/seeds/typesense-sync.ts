@@ -94,4 +94,6 @@ export async function syncToTypesense(): Promise<void> {
   console.log(`\nTypesense sync complete: ${total} spirits indexed`);
 }
 
-syncToTypesense().then(() => prisma.$disconnect()).catch(console.error);
+if (import.meta.url === `file://${process.argv[1]}`) {
+  syncToTypesense().then(() => prisma.$disconnect()).catch(console.error);
+}

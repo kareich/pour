@@ -31,11 +31,15 @@ function validateEAN13(code: string): boolean {
   return ((10 - (sum % 10)) % 10) === parseInt(code[12]);
 }
 
-function normalizeBarcode(code: string): string {
+function normalizeBarcode(code: string): string | null {
   const clean = code.replace(/\D/g, '');
-  if (clean.length === 12) return `0${clean}`; // UPC-A → EAN-13
-  if (clean.length === 13) return clean;
-  return clean;
+  if (clean.length === 12) {
+    const ean = `0${clean}`;
+    return validateEAN13(ean) ? ean : null;
+  }
+  if (clean.length === 13) return validateEAN13(clean) ? clean : null;
+  if (clean.length >= 8) return clean;
+  return null;
 }
 
 function isValidBarcode(code: string): boolean {
@@ -161,5 +165,7 @@ export async function seedFromOpenFoodFacts(csvPath: string): Promise<void> {
   console.log(`\nOpen Food Facts seed: ${processed} spirits processed, ${linked} barcodes linked, ${newSpirits} new spirits`);
 }
 
-const csvPath = process.argv[2] ?? path.join(__dirname, '../../../../data/openfoodfacts.csv');
-seedFromOpenFoodFacts(csvPath).then(() => prisma.$disconnect()).catch(console.error);
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
+  const csvPath = process.argv[2] ?? path.join(__dirname, '../../../../data/openfoodfacts.csv');
+  seedFromOpenFoodFacts(csvPath).then(() => prisma.$disconnect()).catch(console.error);
+}
