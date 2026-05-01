@@ -5,12 +5,18 @@ databases:
     plan: starter
 
 services:
+  - type: redis
+    name: pour-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+
   - type: web
     name: pour-api
     runtime: node
     plan: starter
     rootDir: .
-    buildCommand: npm ci && npm run build --workspace=packages/db --workspace=packages/shared --workspace=apps/api
+    buildCommand: npm install -g pnpm && pnpm install --frozen-lockfile && pnpm run build
+    preDeployCommand: pnpm --filter @pour/db db:migrate:deploy
     startCommand: node apps/api/dist/server.js
     healthCheckPath: /health
     envVars:
@@ -39,47 +45,6 @@ services:
         value: https
       - key: GOOGLE_CLOUD_VISION_API_KEY
         sync: false
-      - key: CLOUDFLARE_R2_ACCOUNT_ID
-        sync: false
-      - key: CLOUDFLARE_R2_ACCESS_KEY_ID
-        sync: false
-      - key: CLOUDFLARE_R2_SECRET_ACCESS_KEY
-        sync: false
-      - key: CLOUDFLARE_R2_BUCKET
-        sync: false
-      - key: CLOUDFLARE_R2_PUBLIC_URL
-        sync: false
-
-  - type: redis
-    name: pour-redis
-    plan: starter
-    maxmemoryPolicy: allkeys-lru
-
-  - type: worker
-    name: pour-workers
-    runtime: node
-    plan: starter
-    rootDir: .
-    buildCommand: npm ci && npm run build --workspace=packages/db --workspace=packages/shared --workspace=apps/workers
-    startCommand: node apps/workers/dist/index.js
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: pour-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          name: pour-redis
-          type: redis
-          property: connectionString
-      - key: TYPESENSE_HOST
-        sync: false
-      - key: TYPESENSE_API_KEY
-        sync: false
-      - key: TYPESENSE_PROTOCOL
-        value: https
       - key: CLOUDFLARE_R2_ACCOUNT_ID
         sync: false
       - key: CLOUDFLARE_R2_ACCESS_KEY_ID

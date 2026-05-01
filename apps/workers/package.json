@@ -15,6 +15,7 @@
     "seed:dedup": "tsx src/seeds/dedup.ts",
     "seed:images": "tsx src/seeds/r2-image-pipeline.ts",
     "seed:typesense": "tsx src/seeds/typesense-sync.ts",
+    "seed:test-account": "tsx src/seeds/seed-test-account.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts"
   },

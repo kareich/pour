@@ -121,6 +121,22 @@ pnpm --filter workers run seed:all
 
 This takes 30–60 minutes and targets 40K+ spirits, 25K+ barcodes, 20K+ images.
 
+### Test account (board demo credentials)
+
+After `seed:all` completes:
+
+1. Create a Clerk account for `test@pour.app` with the password you want to share.
+2. Copy the Clerk user ID from Clerk dashboard → Users → select the account → copy User ID (format: `user_xxxx`).
+3. Seed the test collection:
+
+```bash
+CLERK_ID=user_xxxx pnpm --filter workers seed:test-account
+```
+
+This creates the user profile in the database and pre-loads 15 bottles
+(Maker's Mark, Buffalo Trace, Bulleit, Woodford Reserve, Jack Daniel's, etc.)
+across sealed/open/finished statuses so reviewers see a realistic collection.
+
 ---
 
 ## Step 9 — Trigger production mobile builds
@@ -144,6 +160,7 @@ eas build --profile production --platform all
 - [ ] All Render env vars filled in (Clerk, Typesense, R2)
 - [ ] GitHub Actions secrets set (deploy hooks, DATABASE_URL, EXPO_TOKEN)
 - [ ] Database seeded (`seed:all` completed successfully)
+- [ ] Test account seeded (`seed:test-account` with CLERK_ID)
 - [ ] EAS production build triggered
 - [ ] Board members invited to TestFlight (iOS) and Firebase (Android)
 - [ ] `/health` endpoint returns 200 on the Render URL
