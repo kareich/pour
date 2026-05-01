@@ -2,9 +2,11 @@ import type { FastifyInstance } from 'fastify';
 import { prisma } from '@pour/db';
 import { ScanBarcodeQuerySchema } from '@pour/shared';
 
+const SCAN_RATE_LIMIT = { max: 100, timeWindow: '1 minute' };
+
 export async function scanRoutes(fastify: FastifyInstance) {
   // GET /scan?barcode=X — barcode lookup
-  fastify.get<{ Querystring: { barcode: string } }>('/scan', async (request, reply) => {
+  fastify.get<{ Querystring: { barcode: string } }>('/scan', { config: { rateLimit: SCAN_RATE_LIMIT } }, async (request, reply) => {
     const parsed = ScanBarcodeQuerySchema.safeParse(request.query);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid barcode', details: parsed.error.issues });
 
@@ -60,7 +62,7 @@ export async function scanRoutes(fastify: FastifyInstance) {
   });
 
   // POST /scan/ocr — image OCR → spirit lookup
-  fastify.post<{ Body: { imageBase64: string } }>('/scan/ocr', async (request, reply) => {
+  fastify.post<{ Body: { imageBase64: string } }>('/scan/ocr', { config: { rateLimit: SCAN_RATE_LIMIT } }, async (request, reply) => {
     const { imageBase64 } = request.body;
     if (!imageBase64) return reply.status(400).send({ error: 'imageBase64 is required' });
 
@@ -133,7 +135,7 @@ export async function scanRoutes(fastify: FastifyInstance) {
         imageUrl: spirit.images[0]?.url ?? null,
       },
       source: 'ocr' as const,
-      confidence: hit.text_match_info?.score ? Math.min(1, hit.text_match_info.score / 100) : 0.7,
+      confidence: typeof hit.text_match_info?.score === 'number' ? Math.min(1, hit.text_match_info.score / 100) : 0.7,
       candidateName,
     };
   });

@@ -13,8 +13,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@clerk/clerk-expo": "^1.5.0",
-    "@pour/shared": "*",
+    "@clerk/clerk-expo": "^2.0.0",
+    "@pour/shared": "workspace:*",
     "@react-navigation/bottom-tabs": "^6.5.20",
     "@shopify/flash-list": "^1.7.1",
     "@tanstack/react-query": "^5.56.2",

@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { createClerkClient } from '@clerk/fastify';
+import { createClerkClient, verifyToken } from '@clerk/fastify';
 import { prisma } from '@pour/db';
 import fp from 'fastify-plugin';
 
@@ -25,7 +25,9 @@ export const authPlugin = fp(async (fastify: FastifyInstance) => {
 
     const token = authHeader.slice(7);
     try {
-      const payload = await clerkClient.verifyToken(token);
+      const payload = await verifyToken(token, {
+        secretKey: process.env.CLERK_SECRET_KEY ?? '',
+      });
       const clerkUserId = payload.sub;
 
       // Find or create user in our DB

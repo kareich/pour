@@ -45,7 +45,7 @@ export async function ratingsRoutes(fastify: FastifyInstance) {
 
     const count = allRatings.length;
     const avg = (field: keyof typeof allRatings[0]) =>
-      allRatings.reduce((sum, r) => sum + (r[field] as number), 0) / count;
+      allRatings.reduce((sum: number, r) => sum + (r[field] as number), 0) / count;
 
     await prisma.spirit.update({
       where: { id: spiritId },
