@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '@pour/db';
 import { SubmitRatingSchema } from '@pour/shared';
+import { typesenseClient, SPIRITS_COLLECTION } from '../lib/typesense.js';
 
 export async function ratingsRoutes(fastify: FastifyInstance) {
   // POST /ratings — submit a rating with flavor wheel
@@ -60,6 +61,13 @@ export async function ratingsRoutes(fastify: FastifyInstance) {
         flavorBody: avg('flavorBody'),
       },
     });
+
+    // Sync updated avg_rating + rating_count to Typesense (best-effort, non-blocking)
+    typesenseClient.collections(SPIRITS_COLLECTION).documents().upsert({
+      id: spiritId,
+      avg_rating: avg('score'),
+      rating_count: count,
+    }).catch(() => { /* Typesense may be unavailable; bulk resync covers eventual consistency */ });
 
     return reply.status(201).send(rating);
   });

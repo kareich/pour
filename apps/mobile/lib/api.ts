@@ -47,6 +47,22 @@ export const api = {
       if (category) params.set('category', category);
       return request<{ data: Spirit[]; total: number; page: number; perPage: number }>(`/search?${params}`);
     },
+    autocomplete: (q: string) =>
+      request<{ spirits: Array<{ id: string; name: string; distilleryName?: string; imageUrl?: string; avgRating: number }>; distilleries: Array<{ name: string }> }>(
+        `/search/autocomplete?q=${encodeURIComponent(q)}`
+      ),
+    browse: (filters: { category?: string; region?: string; abv_min?: number; abv_max?: number; rating_min?: number; age_min?: number; sort?: string; page?: number }) => {
+      const params = new URLSearchParams();
+      if (filters.category) params.set('category', filters.category);
+      if (filters.region) params.set('region', filters.region);
+      if (filters.abv_min != null) params.set('abv_min', String(filters.abv_min));
+      if (filters.abv_max != null) params.set('abv_max', String(filters.abv_max));
+      if (filters.rating_min != null) params.set('rating_min', String(filters.rating_min));
+      if (filters.age_min != null) params.set('age_min', String(filters.age_min));
+      if (filters.sort) params.set('sort', filters.sort);
+      if (filters.page) params.set('page', String(filters.page));
+      return request<{ data: Spirit[]; total: number; page: number; perPage: number; facets: unknown[] }>(`/spirits/browse?${params}`);
+    },
   },
 
   users: {
