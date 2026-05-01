@@ -1,4 +1,13 @@
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { useOAuth, useSignIn } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -7,16 +16,20 @@ import { colors, typography, spacing } from '../../lib/theme';
 export default function SignInScreen() {
   const { startOAuthFlow: appleOAuth } = useOAuth({ strategy: 'oauth_apple' });
   const { startOAuthFlow: googleOAuth } = useOAuth({ strategy: 'oauth_google' });
-  const { signIn } = useSignIn();
+  const { signIn, setActive, isLoaded } = useSignIn();
   const router = useRouter();
-  const [loading, setLoading] = useState<'apple' | 'google' | null>(null);
+  const [loading, setLoading] = useState<'apple' | 'google' | 'email' | null>(null);
+  const [showEmail, setShowEmail] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const handleApple = useCallback(async () => {
     try {
       setLoading('apple');
-      const { createdSessionId, setActive } = await appleOAuth();
-      if (createdSessionId && setActive) {
-        await setActive({ session: createdSessionId });
+      const { createdSessionId, setActive: setActiveSession } = await appleOAuth();
+      if (createdSessionId && setActiveSession) {
+        await setActiveSession({ session: createdSessionId });
         router.replace('/(tabs)');
       }
     } catch (err) {
@@ -29,9 +42,9 @@ export default function SignInScreen() {
   const handleGoogle = useCallback(async () => {
     try {
       setLoading('google');
-      const { createdSessionId, setActive } = await googleOAuth();
-      if (createdSessionId && setActive) {
-        await setActive({ session: createdSessionId });
+      const { createdSessionId, setActive: setActiveSession } = await googleOAuth();
+      if (createdSessionId && setActiveSession) {
+        await setActiveSession({ session: createdSessionId });
         router.replace('/(tabs)');
       }
     } catch (err) {
@@ -41,13 +54,42 @@ export default function SignInScreen() {
     }
   }, [googleOAuth, router]);
 
+  const handleEmail = useCallback(async () => {
+    if (!isLoaded || !signIn || !setActive) return;
+    setEmailError(null);
+    try {
+      setLoading('email');
+      const result = await signIn.create({ identifier: email, password });
+      if (result.status === 'complete') {
+        await setActive({ session: result.createdSessionId });
+        router.replace('/(tabs)');
+      }
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === 'object' && 'errors' in err
+          ? (err as { errors: Array<{ message: string }> }).errors[0]?.message
+          : 'Sign in failed. Check your email and password.';
+      setEmailError(msg ?? 'Sign in failed.');
+    } finally {
+      setLoading(null);
+    }
+  }, [isLoaded, signIn, setActive, email, password, router]);
+
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <Text style={styles.logo}>Pour</Text>
       <Text style={styles.tagline}>Scan any bottle. Know in 2 seconds.</Text>
 
       <View style={styles.buttons}>
-        <TouchableOpacity style={styles.appleButton} onPress={handleApple} activeOpacity={0.85} disabled={!!loading}>
+        <TouchableOpacity
+          style={styles.appleButton}
+          onPress={handleApple}
+          activeOpacity={0.85}
+          disabled={!!loading}
+        >
           {loading === 'apple' ? (
             <ActivityIndicator color={colors.background} />
           ) : (
@@ -55,19 +97,68 @@ export default function SignInScreen() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.googleButton} onPress={handleGoogle} activeOpacity={0.85} disabled={!!loading}>
+        <TouchableOpacity
+          style={styles.googleButton}
+          onPress={handleGoogle}
+          activeOpacity={0.85}
+          disabled={!!loading}
+        >
           {loading === 'google' ? (
             <ActivityIndicator color={colors.amber} />
           ) : (
             <Text style={styles.googleText}>G  Continue with Google</Text>
           )}
         </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => setShowEmail((v) => !v)} disabled={!!loading}>
+          <Text style={styles.emailLink}>Or use email</Text>
+        </TouchableOpacity>
+
+        {showEmail && (
+          <View style={styles.emailForm}>
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor={colors.textTertiary}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoComplete="email"
+              value={email}
+              onChangeText={setEmail}
+              editable={!loading}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor={colors.textTertiary}
+              secureTextEntry
+              autoComplete="password"
+              value={password}
+              onChangeText={setPassword}
+              editable={!loading}
+            />
+            {emailError && <Text style={styles.error}>{emailError}</Text>}
+            <TouchableOpacity
+              style={[styles.emailButton, (!email || !password) && styles.emailButtonDisabled]}
+              onPress={handleEmail}
+              activeOpacity={0.85}
+              disabled={!!loading || !email || !password}
+            >
+              {loading === 'email' ? (
+                <ActivityIndicator color={colors.background} />
+              ) : (
+                <Text style={styles.emailButtonText}>Sign in with email</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       <Text style={styles.legal}>
-        By continuing you agree to our Terms and Privacy Policy.{'\n'}You must be 21 or older to use Pour.
+        By continuing you agree to our Terms and Privacy Policy.{'\n'}You must be 21 or older to use
+        Pour.
       </Text>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -95,6 +186,7 @@ const styles = StyleSheet.create({
   buttons: {
     width: '100%',
     gap: spacing.md,
+    alignItems: 'center',
   },
   appleButton: {
     width: '100%',
@@ -122,6 +214,47 @@ const styles = StyleSheet.create({
     fontSize: typography.base,
     fontWeight: '600',
     color: colors.textPrimary,
+  },
+  emailLink: {
+    fontSize: typography.sm,
+    color: colors.textSecondary,
+    textDecorationLine: 'underline',
+  },
+  emailForm: {
+    width: '100%',
+    gap: spacing.sm,
+  },
+  input: {
+    width: '100%',
+    height: 48,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    fontSize: typography.base,
+    color: colors.textPrimary,
+    backgroundColor: 'transparent',
+  },
+  emailButton: {
+    width: '100%',
+    height: 52,
+    backgroundColor: colors.amber,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emailButtonDisabled: {
+    opacity: 0.5,
+  },
+  emailButtonText: {
+    fontSize: typography.base,
+    fontWeight: '600',
+    color: colors.background,
+  },
+  error: {
+    fontSize: typography.xs,
+    color: '#ff4d4f',
+    textAlign: 'center',
   },
   legal: {
     marginTop: spacing.xl,

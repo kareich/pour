@@ -1,10 +1,10 @@
-import * as SecureStore from 'expo-secure-store';
+import { getClerkToken } from './token-store';
 import type { Spirit, CollectionEntry, WishlistEntry, Rating, TasteProfile, PaginatedResponse } from '@pour/shared';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000/api';
 
 async function getAuthToken(): Promise<string | null> {
-  return SecureStore.getItemAsync('clerk_token');
+  return getClerkToken();
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
