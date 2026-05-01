@@ -60,9 +60,11 @@ model Spirit {
   barcodes     SpiritBarcode[]
   images       SpiritImage[]
   attributes   SpiritAttribute[]
-  ratings      Rating[]
-  collections  CollectionEntry[]
-  wishlists    WishlistEntry[]
+  ratings        Rating[]
+  reviews        Review[]
+  collections    CollectionEntry[]
+  wishlists      WishlistEntry[]
+  priceSnapshots PriceSnapshot[]
 
   @@index([name])
   @@index([distilleryId])
@@ -121,6 +123,7 @@ model User {
   updatedAt    DateTime       @updatedAt @map("updated_at")
   tasteProfile TasteProfile?
   ratings      Rating[]
+  reviews      Review[]
   collections  CollectionEntry[]
   wishlists    WishlistEntry[]
 
@@ -199,4 +202,38 @@ model WishlistEntry {
   @@unique([userId, spiritId])
   @@index([userId])
   @@map("wishlist_entries")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spiritId  String   @map("spirit_id")
+  spirit    Spirit   @relation(fields: [spiritId], references: [id], onDelete: Cascade)
+  title     String?
+  body      String
+  isPublic  Boolean  @default(true) @map("is_public")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, spiritId])
+  @@index([spiritId])
+  @@index([userId])
+  @@map("reviews")
+}
+
+model PriceSnapshot {
+  id        String   @id @default(uuid())
+  spiritId  String   @map("spirit_id")
+  spirit    Spirit   @relation(fields: [spiritId], references: [id], onDelete: Cascade)
+  price     Float
+  currency  String   @default("USD")
+  retailer  String?
+  url       String?
+  region    String?
+  capturedAt DateTime @default(now()) @map("captured_at")
+
+  @@index([spiritId])
+  @@index([capturedAt])
+  @@map("price_snapshots")
 }
