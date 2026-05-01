@@ -45,6 +45,11 @@
     "scheme": "pour",
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "79d40321-34d5-4422-b94d-00f99f1d4fe3"
+      }
     }
   }
 }
