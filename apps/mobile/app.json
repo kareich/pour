@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Pour",
+    "slug": "pour",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0a"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.pour.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Pour uses your camera to scan bottle barcodes and labels.",
+        "NSPhotoLibraryUsageDescription": "Pour can read photos of bottle labels to identify spirits.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0a0a0a"
+      },
+      "package": "com.pour.app",
+      "permissions": ["android.permission.CAMERA"]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Pour uses your camera to scan bottle barcodes and labels."
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "scheme": "pour",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

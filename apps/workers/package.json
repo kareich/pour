@@ -1,0 +1,28 @@
+{
+  "name": "@pour/workers",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "seed:ttb": "tsx src/seeds/ttb-cola.ts",
+    "seed:openfoodfacts": "tsx src/seeds/open-food-facts.ts",
+    "seed:typesense": "tsx src/seeds/typesense-sync.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@pour/db": "*",
+    "@pour/shared": "*",
+    "bullmq": "^5.12.0",
+    "csv-parse": "^5.5.6",
+    "typesense": "^1.8.2",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.5",
+    "tsx": "^4.19.1",
+    "typescript": "^5.5.4"
+  }
+}

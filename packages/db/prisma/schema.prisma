@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id         String     @id @default(uuid())
+  name       String
+  slug       String     @unique
+  parentId   String?    @map("parent_id")
+  parent     Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children   Category[] @relation("CategoryHierarchy")
+  spirits    Spirit[]
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  @@map("categories")
+}
+
+model Distillery {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  region    String?
+  country   String   @default("US")
+  website   String?
+  spirits   Spirit[]
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("distilleries")
+}
+
+model Spirit {
+  id           String           @id @default(uuid())
+  name         String
+  slug         String           @unique
+  distilleryId String?          @map("distillery_id")
+  distillery   Distillery?      @relation(fields: [distilleryId], references: [id])
+  categoryId   String?          @map("category_id")
+  category     Category?        @relation(fields: [categoryId], references: [id])
+  subcategory  String?
+  abv          Float?
+  ageStatement Int?             @map("age_statement")
+  description  String?
+  avgRating    Float            @default(0) @map("avg_rating")
+  ratingCount  Int              @default(0) @map("rating_count")
+  // Flavor profile (community average, 0.0–1.0)
+  flavorSweet  Float            @default(0.5) @map("flavor_sweet")
+  flavorSmoke  Float            @default(0.1) @map("flavor_smoke")
+  flavorFruit  Float            @default(0.4) @map("flavor_fruit")
+  flavorGrain  Float            @default(0.5) @map("flavor_grain")
+  flavorSpice  Float            @default(0.4) @map("flavor_spice")
+  flavorFloral Float            @default(0.2) @map("flavor_floral")
+  flavorBody   Float            @default(0.5) @map("flavor_body")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+  barcodes     SpiritBarcode[]
+  images       SpiritImage[]
+  attributes   SpiritAttribute[]
+  ratings      Rating[]
+  collections  CollectionEntry[]
+  wishlists    WishlistEntry[]
+
+  @@index([name])
+  @@index([distilleryId])
+  @@index([categoryId])
+  @@map("spirits")
+}
+
+model SpiritBarcode {
+  id          String      @id @default(uuid())
+  spiritId    String      @map("spirit_id")
+  spirit      Spirit      @relation(fields: [spiritId], references: [id], onDelete: Cascade)
+  barcode     String
+  barcodeType String      @default("EAN13") @map("barcode_type")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  @@unique([barcode])
+  @@index([barcode])
+  @@map("spirit_barcodes")
+}
+
+model SpiritImage {
+  id        String   @id @default(uuid())
+  spiritId  String   @map("spirit_id")
+  spirit    Spirit   @relation(fields: [spiritId], references: [id], onDelete: Cascade)
+  url       String
+  isPrimary Boolean  @default(false) @map("is_primary")
+  source    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([spiritId])
+  @@map("spirit_images")
+}
+
+model SpiritAttribute {
+  id        String   @id @default(uuid())
+  spiritId  String   @map("spirit_id")
+  spirit    Spirit   @relation(fields: [spiritId], references: [id], onDelete: Cascade)
+  key       String
+  value     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([spiritId, key])
+  @@index([spiritId])
+  @@map("spirit_attributes")
+}
+
+model User {
+  id           String         @id @default(uuid())
+  clerkId      String         @unique @map("clerk_id")
+  email        String         @unique
+  username     String         @unique
+  displayName  String         @map("display_name")
+  avatarUrl    String?        @map("avatar_url")
+  is21Plus     Boolean        @default(false) @map("is_21_plus")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  tasteProfile TasteProfile?
+  ratings      Rating[]
+  collections  CollectionEntry[]
+  wishlists    WishlistEntry[]
+
+  @@map("users")
+}
+
+model TasteProfile {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sweet     Float    @default(0.5)
+  smoke     Float    @default(0.2)
+  fruit     Float    @default(0.4)
+  grain     Float    @default(0.5)
+  spice     Float    @default(0.4)
+  floral    Float    @default(0.2)
+  body      Float    @default(0.5)
+  priceMin  Float?   @map("price_min")
+  priceMax  Float?   @map("price_max")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("taste_profiles")
+}
+
+model Rating {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spiritId    String   @map("spirit_id")
+  spirit      Spirit   @relation(fields: [spiritId], references: [id], onDelete: Cascade)
+  score       Int
+  flavorSweet Float    @default(0.5) @map("flavor_sweet")
+  flavorSmoke Float    @default(0.2) @map("flavor_smoke")
+  flavorFruit Float    @default(0.4) @map("flavor_fruit")
+  flavorGrain Float    @default(0.5) @map("flavor_grain")
+  flavorSpice Float    @default(0.4) @map("flavor_spice")
+  flavorFloral Float   @default(0.2) @map("flavor_floral")
+  flavorBody  Float    @default(0.5) @map("flavor_body")
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, spiritId])
+  @@index([spiritId])
+  @@index([userId])
+  @@map("ratings")
+}
+
+model CollectionEntry {
+  id           String      @id @default(uuid())
+  userId       String      @map("user_id")
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spiritId     String      @map("spirit_id")
+  spirit       Spirit      @relation(fields: [spiritId], references: [id], onDelete: Cascade)
+  bottleStatus String      @default("sealed") @map("bottle_status")
+  pricePaid    Float?      @map("price_paid")
+  acquiredAt   DateTime?   @map("acquired_at")
+  notes        String?
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  @@unique([userId, spiritId])
+  @@index([userId])
+  @@map("collection_entries")
+}
+
+model WishlistEntry {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spiritId    String   @map("spirit_id")
+  spirit      Spirit   @relation(fields: [spiritId], references: [id], onDelete: Cascade)
+  targetPrice Float?   @map("target_price")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, spiritId])
+  @@index([userId])
+  @@map("wishlist_entries")
+}
