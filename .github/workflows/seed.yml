@@ -1,0 +1,65 @@
+name: Seed Database
+
+on:
+  workflow_dispatch:
+    inputs:
+      step:
+        description: 'Which seed to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - demo-catalog
+          - typesense
+          - test-account
+      clerk_id:
+        description: 'Clerk user ID for test-account step (only needed when step=test-account)'
+        required: false
+        default: ''
+
+jobs:
+  seed:
+    name: Run seed
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      TYPESENSE_HOST: ${{ secrets.TYPESENSE_HOST }}
+      TYPESENSE_API_KEY: ${{ secrets.TYPESENSE_API_KEY }}
+      TYPESENSE_PROTOCOL: ${{ secrets.TYPESENSE_PROTOCOL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9.15.6
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @pour/db db:generate
+
+      - name: Run migrations
+        if: inputs.step == 'all' || inputs.step == 'demo-catalog'
+        run: pnpm --filter @pour/db db:migrate:deploy
+
+      - name: Seed demo catalog
+        if: inputs.step == 'all' || inputs.step == 'demo-catalog'
+        run: pnpm --filter workers seed:demo-catalog
+
+      - name: Sync Typesense
+        if: inputs.step == 'all' || inputs.step == 'typesense'
+        run: pnpm --filter workers seed:typesense
+
+      - name: Seed test account
+        if: inputs.step == 'all' || inputs.step == 'test-account'
+        env:
+          CLERK_ID: ${{ inputs.clerk_id }}
+        run: pnpm --filter workers seed:test-account
