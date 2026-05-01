@@ -1,14 +1,48 @@
 import { Tabs, useRouter } from 'expo-router';
-import { TouchableOpacity, StyleSheet, View } from 'react-native';
-import { colors } from '../../lib/theme';
+import { TouchableOpacity, StyleSheet, View, Text, Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { colors, radius } from '../../lib/theme';
+
+// ── Scan button (elevated amber circle) ─────────────────────────────────────
 
 function ScanButton({ onPress }: { onPress: () => void }) {
+  async function handlePress() {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onPress();
+  }
+
   return (
-    <TouchableOpacity style={styles.scanButton} onPress={onPress} activeOpacity={0.8}>
-      <View style={styles.scanButtonInner} />
+    <TouchableOpacity
+      style={styles.scanButton}
+      onPress={handlePress}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel="Scan a bottle"
+      accessibilityHint="Opens the barcode and label scanner"
+    >
+      {/* Scan icon — crosshair corners */}
+      <View style={styles.scanIcon}>
+        <View style={[styles.corner, styles.cornerTL]} />
+        <View style={[styles.corner, styles.cornerTR]} />
+        <View style={[styles.corner, styles.cornerBL]} />
+        <View style={[styles.corner, styles.cornerBR]} />
+      </View>
     </TouchableOpacity>
   );
 }
+
+// ── Active dot indicator ─────────────────────────────────────────────────────
+
+function TabIcon({ focused, icon, label }: { focused: boolean; icon: string; label: string }) {
+  return (
+    <View style={styles.tabIconWrapper} accessibilityLabel={label}>
+      <Text style={[styles.tabIconText, focused && styles.tabIconActive]}>{icon}</Text>
+      {focused && <View style={styles.activeDot} />}
+    </View>
+  );
+}
+
+// ── Layout ───────────────────────────────────────────────────────────────────
 
 export default function TabLayout() {
   const router = useRouter();
@@ -16,17 +50,14 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          height: 80,
-          paddingBottom: 16,
-        },
-        tabBarActiveTintColor: colors.amber,
+        tabBarStyle: styles.tabBar,
+        tabBarActiveTintColor: colors.accentAmber,
         tabBarInactiveTintColor: colors.textTertiary,
-        headerStyle: { backgroundColor: colors.background },
+        tabBarShowLabel: false,
+        headerStyle: { backgroundColor: colors.bgPrimary },
         headerTintColor: colors.textPrimary,
         headerShadowVisible: false,
+        headerTitleStyle: { fontWeight: '700' },
       }}
     >
       <Tabs.Screen
@@ -34,6 +65,9 @@ export default function TabLayout() {
         options={{
           title: 'Discover',
           tabBarLabel: 'Home',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon focused={focused} icon="⌂" label="Home" />
+          ),
         }}
       />
       <Tabs.Screen
@@ -41,6 +75,9 @@ export default function TabLayout() {
         options={{
           title: 'Search',
           tabBarLabel: 'Search',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon focused={focused} icon="⌕" label="Search" />
+          ),
         }}
       />
       <Tabs.Screen
@@ -62,6 +99,9 @@ export default function TabLayout() {
         options={{
           title: 'Collection',
           tabBarLabel: 'Collection',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon focused={focused} icon="⊞" label="Collection" />
+          ),
         }}
       />
       <Tabs.Screen
@@ -69,32 +109,98 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarLabel: 'Profile',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon focused={focused} icon="◯" label="Profile" />
+          ),
         }}
       />
     </Tabs>
   );
 }
 
+// ── Styles ───────────────────────────────────────────────────────────────────
+
+const CORNER = 3;
+const CORNER_SIZE = 8;
+
 const styles = StyleSheet.create({
-  scanButton: {
-    bottom: 8,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.amber,
+  tabBar: {
+    backgroundColor: colors.bgSurface1,
+    borderTopColor: colors.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    height: Platform.select({ ios: 82, android: 64 }),
+    paddingBottom: Platform.select({ ios: 20, android: 8 }),
+    paddingTop: 8,
+  },
+  tabIconWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.amber,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
+    width: 44,
+    height: 44,
+    position: 'relative',
   },
-  scanButtonInner: {
+  tabIconText: {
+    fontSize: 20,
+    color: colors.textTertiary,
+  },
+  tabIconActive: {
+    color: colors.accentAmber,
+  },
+  activeDot: {
+    position: 'absolute',
+    bottom: 2,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.accentAmber,
+  },
+
+  // Scan button
+  scanButton: {
+    bottom: Platform.select({ ios: 14, android: 4 }),
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: colors.accentAmber,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    shadowColor: colors.accentAmber,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  scanIcon: {
     width: 22,
     height: 22,
-    borderRadius: 4,
-    borderWidth: 2.5,
-    borderColor: colors.background,
+    position: 'relative',
+  },
+  corner: {
+    position: 'absolute',
+    width: CORNER_SIZE,
+    height: CORNER_SIZE,
+    borderColor: colors.bgPrimary,
+    borderWidth: CORNER,
+  },
+  cornerTL: {
+    top: 0, left: 0,
+    borderRightWidth: 0, borderBottomWidth: 0,
+    borderTopLeftRadius: 2,
+  },
+  cornerTR: {
+    top: 0, right: 0,
+    borderLeftWidth: 0, borderBottomWidth: 0,
+    borderTopRightRadius: 2,
+  },
+  cornerBL: {
+    bottom: 0, left: 0,
+    borderRightWidth: 0, borderTopWidth: 0,
+    borderBottomLeftRadius: 2,
+  },
+  cornerBR: {
+    bottom: 0, right: 0,
+    borderLeftWidth: 0, borderTopWidth: 0,
+    borderBottomRightRadius: 2,
   },
 });
