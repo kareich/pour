@@ -10,6 +10,7 @@ import { usersRoutes } from './routes/users.js';
 import { collectionsRoutes } from './routes/collections.js';
 import { wishlistsRoutes } from './routes/wishlists.js';
 import { ratingsRoutes } from './routes/ratings.js';
+import { submissionsRoutes } from './routes/submissions.js';
 
 const fastify = Fastify({
   logger: {
@@ -39,6 +40,7 @@ async function start() {
   await fastify.register(collectionsRoutes, { prefix: '/api' });
   await fastify.register(wishlistsRoutes, { prefix: '/api' });
   await fastify.register(ratingsRoutes, { prefix: '/api' });
+  await fastify.register(submissionsRoutes, { prefix: '/api' });
 
   const port = Number(process.env.PORT ?? 3000);
   const host = process.env.HOST ?? '0.0.0.0';

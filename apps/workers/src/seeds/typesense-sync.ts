@@ -42,7 +42,7 @@ const schema = {
   default_sorting_field: 'avg_rating',
 };
 
-async function main() {
+export async function syncToTypesense(): Promise<void> {
   // Recreate collection
   try {
     await client.collections(COLLECTION).delete();
@@ -94,4 +94,4 @@ async function main() {
   console.log(`\nTypesense sync complete: ${total} spirits indexed`);
 }
 
-main().then(() => prisma.$disconnect()).catch(console.error);
+syncToTypesense().then(() => prisma.$disconnect()).catch(console.error);

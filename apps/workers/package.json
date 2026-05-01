@@ -6,13 +6,20 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
+    "seed:all": "tsx src/seeds/seed-all.ts",
+    "seed:categories": "tsx src/seeds/categories.ts",
     "seed:ttb": "tsx src/seeds/ttb-cola.ts",
     "seed:openfoodfacts": "tsx src/seeds/open-food-facts.ts",
+    "seed:lcbo": "tsx src/seeds/lcbo.ts",
+    "seed:wslcb": "tsx src/seeds/wslcb.ts",
+    "seed:dedup": "tsx src/seeds/dedup.ts",
+    "seed:images": "tsx src/seeds/r2-image-pipeline.ts",
     "seed:typesense": "tsx src/seeds/typesense-sync.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.600.0",
     "@pour/db": "*",
     "@pour/shared": "*",
     "bullmq": "^5.12.0",

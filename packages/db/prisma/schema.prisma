@@ -237,3 +237,21 @@ model PriceSnapshot {
   @@index([capturedAt])
   @@map("price_snapshots")
 }
+
+model SpiritSubmission {
+  id          String   @id @default(uuid())
+  barcode     String?
+  productName String   @map("product_name")
+  brand       String?
+  imageUrl    String?  @map("image_url")
+  notes       String?
+  submittedBy String?  @map("submitted_by")
+  status      String   @default("pending")
+  reviewedBy  String?  @map("reviewed_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([barcode])
+  @@map("spirit_submissions")
+}
