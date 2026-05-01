@@ -7,6 +7,7 @@
  * Run: pnpm --filter workers run seed:categories
  */
 
+import { fileURLToPath } from 'url';
 import { prisma } from '@pour/db';
 
 function slugify(name: string): string {
