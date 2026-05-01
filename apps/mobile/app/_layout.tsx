@@ -30,7 +30,7 @@ function AuthGate() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const { isAgeVerified } = useAuthStore();
+  const { isAgeVerified, hasSeenWelcome, hasCompletedQuiz } = useAuthStore();
   const [storeHydrated, setStoreHydrated] = useState(useAuthStore.persist.hasHydrated());
 
   // Register Clerk's getToken so non-React api.ts can call it
@@ -47,16 +47,39 @@ function AuthGate() {
 
   useEffect(() => {
     if (!isLoaded || !storeHydrated) return;
-    const inAuthGroup = segments[0] === '(auth)';
 
+    const inAuthGroup = segments[0] === '(auth)';
+    const inQuizGroup = segments[0] === 'quiz';
+
+    // Step 1: Age gate
     if (!isAgeVerified) {
       router.replace('/(auth)/age-gate');
-    } else if (!isSignedIn && !inAuthGroup) {
-      router.replace('/(auth)/sign-in');
-    } else if (isSignedIn && inAuthGroup) {
+      return;
+    }
+
+    // Step 2: Value proposition screens (before sign-in)
+    if (!hasSeenWelcome && !inAuthGroup) {
+      router.replace('/(auth)/welcome');
+      return;
+    }
+
+    // Step 3: Authentication
+    if (!isSignedIn) {
+      if (!inAuthGroup) router.replace('/(auth)/sign-in');
+      return;
+    }
+
+    // Step 4: Taste quiz (after sign-in, before main app)
+    if (!hasCompletedQuiz) {
+      if (!inQuizGroup) router.replace('/quiz');
+      return;
+    }
+
+    // Step 5: Main app
+    if (inAuthGroup || inQuizGroup) {
       router.replace('/(tabs)');
     }
-  }, [isLoaded, isSignedIn, isAgeVerified, segments, storeHydrated]);
+  }, [isLoaded, isSignedIn, isAgeVerified, hasSeenWelcome, hasCompletedQuiz, segments, storeHydrated]);
 
   // Don't render until the auth store hydrated — avoids a flash redirect to age-gate
   if (!storeHydrated) return null;

@@ -4,8 +4,10 @@ import * as SecureStore from 'expo-secure-store';
 
 interface AuthState {
   isAgeVerified: boolean;
+  hasSeenWelcome: boolean;
   hasCompletedQuiz: boolean;
   setAgeVerified: (v: boolean) => void;
+  setSeenWelcome: (v: boolean) => void;
   setQuizCompleted: (v: boolean) => void;
 }
 
@@ -19,8 +21,10 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       isAgeVerified: false,
+      hasSeenWelcome: false,
       hasCompletedQuiz: false,
       setAgeVerified: (isAgeVerified) => set({ isAgeVerified }),
+      setSeenWelcome: (hasSeenWelcome) => set({ hasSeenWelcome }),
       setQuizCompleted: (hasCompletedQuiz) => set({ hasCompletedQuiz }),
     }),
     {
