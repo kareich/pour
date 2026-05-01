@@ -14,7 +14,7 @@ on:
           - typesense
           - test-account
       clerk_id:
-        description: 'Clerk user ID for test-account step (only needed when step=test-account)'
+        description: 'Clerk user ID override (falls back to CLERK_TEST_USER_ID secret)'
         required: false
         default: ''
 
@@ -61,5 +61,5 @@ jobs:
       - name: Seed test account
         if: inputs.step == 'all' || inputs.step == 'test-account'
         env:
-          CLERK_ID: ${{ inputs.clerk_id }}
+          CLERK_ID: ${{ inputs.clerk_id || secrets.CLERK_TEST_USER_ID }}
         run: pnpm --filter workers seed:test-account
