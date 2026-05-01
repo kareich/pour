@@ -63,17 +63,20 @@ async function mergeInto(canonicalId: string, duplicateId: string): Promise<void
   await prisma.wishlistEntry.updateMany({ where: { spiritId: duplicateId }, data: { spiritId: canonicalId } }).catch(() => {});
   await prisma.priceSnapshot.updateMany({ where: { spiritId: duplicateId }, data: { spiritId: canonicalId } }).catch(() => {});
 
-  // Merge metadata onto canonical if it's missing
-  const dup = await prisma.spirit.findUnique({ where: { id: duplicateId } });
-  if (dup) {
+  // Fill null fields on canonical from duplicate — never overwrite existing data
+  const [canonical, dup] = await Promise.all([
+    prisma.spirit.findUnique({ where: { id: canonicalId } }),
+    prisma.spirit.findUnique({ where: { id: duplicateId } }),
+  ]);
+  if (canonical && dup) {
     await prisma.spirit.update({
       where: { id: canonicalId },
       data: {
-        abv: dup.abv ?? undefined,
-        description: dup.description ?? undefined,
-        categoryId: dup.categoryId ?? undefined,
-        distilleryId: dup.distilleryId ?? undefined,
-        ageStatement: dup.ageStatement ?? undefined,
+        abv: canonical.abv ?? dup.abv ?? undefined,
+        description: canonical.description ?? dup.description ?? undefined,
+        categoryId: canonical.categoryId ?? dup.categoryId ?? undefined,
+        distilleryId: canonical.distilleryId ?? dup.distilleryId ?? undefined,
+        ageStatement: canonical.ageStatement ?? dup.ageStatement ?? undefined,
       },
     });
   }
@@ -82,15 +85,11 @@ async function mergeInto(canonicalId: string, duplicateId: string): Promise<void
 }
 
 async function deduplicateBySlugSuffix(): Promise<number> {
-  // Find spirits with slugs ending in -off or -NNNN (added by open-food-facts to avoid collisions)
+  // Find spirits with slugs ending in -off (added by open-food-facts.ts when creating new records).
+  // The -NNNN barcode-suffix pattern is intentionally excluded: most spirit names legitimately
+  // end in digits (e.g. "Macallan 12") and the false-positive rate would be too high.
   const suffixedSpirits = await prisma.spirit.findMany({
-    where: {
-      OR: [
-        { slug: { endsWith: '-off' } },
-        // Match 4-digit barcode suffix pattern
-        { slug: { contains: '-' } },
-      ],
-    },
+    where: { slug: { endsWith: '-off' } },
     select: { id: true, slug: true, name: true, abv: true, description: true, categoryId: true, distilleryId: true, ageStatement: true },
   });
 

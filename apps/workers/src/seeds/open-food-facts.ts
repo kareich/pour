@@ -24,11 +24,23 @@ interface OFFRow {
   image_front_url: string;
 }
 
+function validateEAN13(code: string): boolean {
+  if (code.length !== 13 || !/^\d+$/.test(code)) return false;
+  let sum = 0;
+  for (let i = 0; i < 12; i++) sum += parseInt(code[i]) * (i % 2 === 0 ? 1 : 3);
+  return ((10 - (sum % 10)) % 10) === parseInt(code[12]);
+}
+
 function normalizeBarcode(code: string): string {
   const clean = code.replace(/\D/g, '');
   if (clean.length === 12) return `0${clean}`; // UPC-A → EAN-13
   if (clean.length === 13) return clean;
   return clean;
+}
+
+function isValidBarcode(code: string): boolean {
+  if (code.length === 13) return validateEAN13(code);
+  return code.length >= 8; // shorter codes (UPC-E, ISBN-like) accepted as-is
 }
 
 function isSpiritCategory(categories: string): boolean {
@@ -78,7 +90,7 @@ export async function seedFromOpenFoodFacts(csvPath: string): Promise<void> {
     if (!isSpiritCategory(row.categories_en ?? '')) return;
 
     const barcode = normalizeBarcode(row.code ?? '');
-    if (!barcode || barcode.length < 8) return;
+    if (!barcode || !isValidBarcode(barcode)) return;
 
     const productName = (row.product_name ?? '').trim().substring(0, 255);
     if (!productName) return;

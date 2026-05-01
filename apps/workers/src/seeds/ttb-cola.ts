@@ -9,7 +9,6 @@
 
 import { parse } from 'csv-parse';
 import { createReadStream, existsSync } from 'fs';
-import { pipeline } from 'stream/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { prisma } from '@pour/db';
@@ -73,6 +72,14 @@ interface TTBRow {
   'FANCIFUL NAME': string;
 }
 
+interface PendingRow {
+  name: string;
+  slug: string;
+  categoryName: string | null;
+  distilleryName: string | null;
+  abv: number | null;
+}
+
 async function ensureCategory(name: string): Promise<string> {
   const slug = slugify(name);
   const cat = await prisma.category.upsert({
@@ -105,15 +112,29 @@ export async function seedFromTTB(csvPath: string): Promise<void> {
   let inserted = 0;
   let skipped = 0;
   const BATCH_SIZE = 500;
-  const batch: Array<{ name: string; slug: string; categoryId: string | null; distilleryId: string | null; abv: number | null }> = [];
 
-  const flush = async () => {
-    if (!batch.length) return;
-    for (const item of batch) {
+  async function processBatch(rows: PendingRow[]): Promise<void> {
+    for (const item of rows) {
+      let categoryId: string | null = null;
+      if (item.categoryName) {
+        if (!categoryCache.has(item.categoryName)) {
+          categoryCache.set(item.categoryName, await ensureCategory(item.categoryName));
+        }
+        categoryId = categoryCache.get(item.categoryName) ?? null;
+      }
+
+      let distilleryId: string | null = null;
+      if (item.distilleryName && item.distilleryName.length > 1) {
+        if (!distilleryCache.has(item.distilleryName)) {
+          distilleryCache.set(item.distilleryName, await ensureDistillery(item.distilleryName));
+        }
+        distilleryId = distilleryCache.get(item.distilleryName) ?? null;
+      }
+
       try {
         await prisma.spirit.upsert({
           where: { slug: item.slug },
-          create: item,
+          create: { name: item.name, slug: item.slug, categoryId, distilleryId, abv: item.abv },
           update: {},
         });
         inserted++;
@@ -121,13 +142,15 @@ export async function seedFromTTB(csvPath: string): Promise<void> {
         skipped++;
       }
     }
-    batch.length = 0;
     process.stdout.write(`\rInserted: ${inserted} | Skipped: ${skipped}`);
-  };
+  }
 
+  const pending: PendingRow[] = [];
   const parser = parse({ columns: true, trim: true, skip_empty_lines: true });
 
-  parser.on('data', async (row: TTBRow) => {
+  // Collect rows synchronously; pause and flush async when batch is full.
+  // Using a sync data handler avoids concurrent async handlers racing over shared state.
+  parser.on('data', (row: TTBRow) => {
     const brandName = normalizeName(row['BRAND NAME'] ?? '');
     const fancifulName = normalizeName(row['FANCIFUL NAME'] ?? '');
     const rawName = fancifulName || brandName;
@@ -140,34 +163,23 @@ export async function seedFromTTB(csvPath: string): Promise<void> {
     const classType = (row['CLASS/TYPE'] ?? '').toUpperCase().trim();
     const categoryName = TTB_CLASS_MAP[classType] ?? null;
     const abv = parseAbv(row['ALCOHOL CONTENT'] ?? '');
-
-    let categoryId: string | null = null;
-    if (categoryName) {
-      if (!categoryCache.has(categoryName)) {
-        categoryCache.set(categoryName, await ensureCategory(categoryName));
-      }
-      categoryId = categoryCache.get(categoryName) ?? null;
-    }
-
     const distilleryName = normalizeName(row['TRADE NAME'] ?? brandName);
-    let distilleryId: string | null = null;
-    if (distilleryName && distilleryName.length > 1) {
-      if (!distilleryCache.has(distilleryName)) {
-        distilleryCache.set(distilleryName, await ensureDistillery(distilleryName));
-      }
-      distilleryId = distilleryCache.get(distilleryName) ?? null;
-    }
 
-    batch.push({ name, slug, categoryId, distilleryId, abv });
-    if (batch.length >= BATCH_SIZE) {
+    pending.push({ name, slug, categoryName, distilleryName: distilleryName.length > 1 ? distilleryName : null, abv });
+
+    if (pending.length >= BATCH_SIZE) {
+      const batch = pending.splice(0);
       parser.pause();
-      await flush();
-      parser.resume();
+      processBatch(batch).then(() => parser.resume()).catch(() => parser.resume());
     }
   });
 
-  await pipeline(createReadStream(csvPath), parser).catch(() => {});
-  await flush();
+  await new Promise<void>((resolve, reject) => {
+    createReadStream(csvPath).pipe(parser).on('finish', resolve).on('error', reject);
+  });
+
+  // Flush remaining rows after stream ends
+  if (pending.length) await processBatch(pending.splice(0));
 
   console.log(`\nTTB seed complete: ${inserted} inserted, ${skipped} skipped`);
 }

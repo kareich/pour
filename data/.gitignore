@@ -1,0 +1,7 @@
+# Ignore all data files — they are too large for git and contain third-party data.
+# See README.md for download instructions.
+*.csv
+*.tsv
+*.json
+*.jsonl
+!README.md

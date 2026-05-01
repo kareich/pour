@@ -77,10 +77,20 @@ function parseAbv(abvStr: string): number | null {
   return num;
 }
 
+function validateEAN13(code: string): boolean {
+  if (code.length !== 13 || !/^\d+$/.test(code)) return false;
+  let sum = 0;
+  for (let i = 0; i < 12; i++) sum += parseInt(code[i]) * (i % 2 === 0 ? 1 : 3);
+  return ((10 - (sum % 10)) % 10) === parseInt(code[12]);
+}
+
 function normalizeBarcode(code: string): string | null {
   const clean = code.replace(/\D/g, '');
-  if (clean.length === 12) return `0${clean}`;
-  if (clean.length === 13) return clean;
+  if (clean.length === 12) {
+    const ean = `0${clean}`;
+    return validateEAN13(ean) ? ean : null;
+  }
+  if (clean.length === 13) return validateEAN13(clean) ? clean : null;
   if (clean.length >= 8) return clean;
   return null;
 }
