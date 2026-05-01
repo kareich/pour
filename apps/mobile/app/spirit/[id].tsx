@@ -2,36 +2,35 @@ import { ScrollView, View, Text, StyleSheet, TouchableOpacity, ActivityIndicator
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
-import { colors, typography, spacing, radius } from '../../lib/theme';
+import { colors, typography, spacing, radius, textStyles } from '../../lib/theme';
 import { api } from '../../lib/api';
+import { MatchScoreBadge } from '../../components/MatchScoreBadge';
+import { FlavorWheel } from '../../components/FlavorWheel';
+import type { FlavorProfile } from '../../components/FlavorWheel';
 
-const FLAVOR_LABELS: Record<string, string> = {
-  sweet: 'Sweet', smoke: 'Smoke', fruit: 'Fruit',
-  grain: 'Grain', spice: 'Spice', floral: 'Floral', body: 'Body',
-};
-
-function MatchBadge({ score }: { score: number }) {
-  const color = score >= 80 ? colors.amber : score >= 60 ? '#a16207' : colors.textTertiary;
+function StarRow({ score }: { score: number }) {
+  const full = Math.floor(score);
+  const half = score - full >= 0.5;
   return (
-    <View style={[styles.matchBadge, { backgroundColor: color }]}>
-      <Text style={styles.matchScore}>{score}</Text>
-      <Text style={styles.matchLabel}>MATCH</Text>
+    <View style={{ flexDirection: 'row', gap: 2 }}>
+      {Array.from({ length: 5 }, (_, i) => (
+        <Text key={i} style={{ fontSize: 14, color: i < full ? colors.accentAmber : half && i === full ? colors.accentAmber : colors.textTertiary }}>
+          {i < full ? '★' : half && i === full ? '⯨' : '☆'}
+        </Text>
+      ))}
     </View>
   );
 }
 
-function FlavorWheel({ flavor }: { flavor: Record<string, number> }) {
+function ReviewCard({ review }: { review: { score: number; notes: string | null; createdAt: string; user: { displayName: string } } }) {
   return (
-    <View style={styles.flavorSection}>
-      {Object.entries(FLAVOR_LABELS).map(([key, label]) => (
-        <View key={key} style={styles.flavorRow}>
-          <Text style={styles.flavorLabel}>{label}</Text>
-          <View style={styles.flavorBarBg}>
-            <View style={[styles.flavorBarFill, { width: `${Math.round((flavor[key] ?? 0) * 100)}%` }]} />
-          </View>
-          <Text style={styles.flavorValue}>{Math.round((flavor[key] ?? 0) * 100)}</Text>
-        </View>
-      ))}
+    <View style={styles.reviewCard}>
+      <View style={styles.reviewHeader}>
+        <Text style={styles.reviewUser}>{review.user.displayName}</Text>
+        <StarRow score={review.score} />
+        <Text style={styles.reviewScore}>{review.score.toFixed(1)}</Text>
+      </View>
+      {review.notes ? <Text style={styles.reviewNotes} numberOfLines={3}>{review.notes}</Text> : null}
     </View>
   );
 }
@@ -46,8 +45,39 @@ export default function SpiritDetailScreen() {
     queryFn: () => api.spirits.get(id),
   });
 
+  const { data: ratingsData } = useQuery({
+    queryKey: ['spirit-ratings', id],
+    queryFn: () => api.spirits.ratings(id, 1),
+    enabled: !!id,
+  });
+
+  const { data: me } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => api.users.me(),
+  });
+
+  const { data: collectionData } = useQuery({
+    queryKey: ['collection'],
+    queryFn: () => api.collections.list(),
+  });
+
+  const { data: wishlistData } = useQuery({
+    queryKey: ['wishlist'],
+    queryFn: () => api.wishlists.list(),
+  });
+
+  const isInCollection = collectionData?.some(e => e.spiritId === id) ?? false;
+  const isInWishlist = wishlistData?.some(e => e.spiritId === id) ?? false;
+
+  const collectionEntry = collectionData?.find(e => e.spiritId === id);
+
   const addToCollection = useMutation({
     mutationFn: () => api.collections.add({ spiritId: id, bottleStatus: 'sealed' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['collection'] }),
+  });
+
+  const removeFromCollection = useMutation({
+    mutationFn: () => api.collections.remove(collectionEntry!.id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['collection'] }),
   });
 
@@ -56,10 +86,16 @@ export default function SpiritDetailScreen() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wishlist'] }),
   });
 
+  const wishlistEntry = wishlistData?.find(e => e.spiritId === id);
+  const removeFromWishlist = useMutation({
+    mutationFn: () => api.wishlists.remove(wishlistEntry!.id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['wishlist'] }),
+  });
+
   if (isLoading) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color={colors.amber} />
+        <ActivityIndicator size="large" color={colors.accentAmber} />
       </View>
     );
   }
@@ -72,119 +108,234 @@ export default function SpiritDetailScreen() {
     );
   }
 
-  const flavor = {
-    sweet: spirit.flavor.sweet, smoke: spirit.flavor.smoke, fruit: spirit.flavor.fruit,
-    grain: spirit.flavor.grain, spice: spirit.flavor.spice, floral: spirit.flavor.floral,
-    body: spirit.flavor.body,
-  };
+  const userFlavor: FlavorProfile | undefined = me?.tasteProfile
+    ? {
+        sweet: me.tasteProfile.sweet,
+        smoke: me.tasteProfile.smoke,
+        fruit: me.tasteProfile.fruit,
+        grain: me.tasteProfile.grain,
+        spice: me.tasteProfile.spice,
+        floral: me.tasteProfile.floral,
+        body: me.tasteProfile.body,
+      }
+    : undefined;
+
+  const recentReviews = ratingsData?.data.slice(0, 5) ?? [];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Hero image */}
-      <View style={styles.hero}>
-        <Image
-          source={spirit.imageUrl ?? require('../../assets/bottle-placeholder.png')}
-          style={styles.heroImage}
-          contentFit="cover"
-        />
-        <View style={styles.heroOverlay} />
-        <View style={styles.heroContent}>
-          <Text style={styles.spiritName}>{spirit.name}</Text>
-          <Text style={styles.distilleryName}>{spirit.distillery?.name ?? ''}</Text>
+    <View style={styles.root}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        {/* Hero image */}
+        <View style={styles.hero}>
+          <Image
+            source={spirit.imageUrl ?? require('../../assets/bottle-placeholder.png')}
+            style={styles.heroImage}
+            contentFit="cover"
+          />
+          <View style={styles.heroOverlay} />
+          <View style={styles.heroContent}>
+            <Text style={styles.spiritName}>{spirit.name}</Text>
+            <Text style={styles.distilleryName}>{spirit.distilleryName}</Text>
+          </View>
+          {spirit.matchScore != null ? (
+            <View style={styles.matchPosition}>
+              <MatchScoreBadge score={spirit.matchScore} size={64} />
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.quizPrompt}
+              onPress={() => router.push('/quiz')}
+            >
+              <Text style={styles.quizPromptText}>Take the quiz</Text>
+              <Text style={styles.quizPromptSub}>to see your match</Text>
+            </TouchableOpacity>
+          )}
         </View>
-        {spirit.matchScore !== null && spirit.matchScore !== undefined && (
-          <View style={styles.matchPosition}>
-            <MatchBadge score={spirit.matchScore} />
-          </View>
-        )}
-      </View>
 
-      {/* Stats row */}
-      <View style={styles.statsRow}>
-        <View style={styles.stat}>
-          <Text style={styles.statValue}>★ {spirit.avgRating.toFixed(1)}</Text>
-          <Text style={styles.statLabel}>{spirit.ratingCount} ratings</Text>
+        {/* Community rating + stats */}
+        <View style={styles.statsRow}>
+          <View style={styles.stat}>
+            <StarRow score={spirit.avgRating} />
+            <Text style={styles.statLabel}>{spirit.ratingCount} ratings</Text>
+          </View>
+          {spirit.abv != null && (
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{spirit.abv}%</Text>
+              <Text style={styles.statLabel}>ABV</Text>
+            </View>
+          )}
+          {spirit.ageStatement != null && (
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{spirit.ageStatement} yr</Text>
+              <Text style={styles.statLabel}>Age</Text>
+            </View>
+          )}
+          {spirit.category ? (
+            <View style={styles.stat}>
+              <Text style={styles.statValue} numberOfLines={1}>{spirit.category}</Text>
+              <Text style={styles.statLabel}>Category</Text>
+            </View>
+          ) : null}
         </View>
-        {spirit.abv && (
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{spirit.abv}%</Text>
-            <Text style={styles.statLabel}>ABV</Text>
-          </View>
-        )}
-        {spirit.ageStatement && (
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{spirit.ageStatement} yr</Text>
-            <Text style={styles.statLabel}>Age</Text>
-          </View>
-        )}
-        {spirit.category && (
-          <View style={styles.stat}>
-            <Text style={styles.statValue} numberOfLines={1}>{spirit.category.name}</Text>
-            <Text style={styles.statLabel}>Category</Text>
-          </View>
-        )}
-      </View>
 
-      {/* Flavor profile */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Flavor Profile</Text>
-        <FlavorWheel flavor={flavor} />
-      </View>
-
-      {/* Description */}
-      {spirit.description && (
+        {/* Flavor wheel */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
-          <Text style={styles.description}>{spirit.description}</Text>
+          <Text style={styles.sectionTitle}>Flavor Profile</Text>
+          <View style={styles.wheelWrap}>
+            <FlavorWheel
+              communityFlavor={spirit.flavor}
+              userFlavor={userFlavor}
+              size={240}
+            />
+          </View>
         </View>
-      )}
 
-      {/* Write review CTA */}
-      <TouchableOpacity
-        style={styles.reviewButton}
-        onPress={() => router.push(`/review/${id}`)}
-      >
-        <Text style={styles.reviewButtonText}>Write a Review</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        {/* Description */}
+        {spirit.description ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>About</Text>
+            <Text style={styles.description}>{spirit.description}</Text>
+          </View>
+        ) : null}
+
+        {/* Reviews */}
+        {recentReviews.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Recent Reviews</Text>
+            {recentReviews.map(r => (
+              <ReviewCard key={r.id} review={r} />
+            ))}
+          </View>
+        )}
+
+        {/* Write a Review */}
+        <TouchableOpacity
+          style={styles.reviewButton}
+          onPress={() => router.push(`/review/${id}`)}
+        >
+          <Text style={styles.reviewButtonText}>Write a Review</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      {/* Sticky action buttons */}
+      <View style={styles.stickyBar}>
+        <TouchableOpacity
+          style={[styles.actionBtn, isInCollection && styles.actionBtnActive]}
+          onPress={() => isInCollection ? removeFromCollection.mutate() : addToCollection.mutate()}
+          disabled={addToCollection.isPending || removeFromCollection.isPending}
+        >
+          <Text style={[styles.actionBtnText, isInCollection && styles.actionBtnTextActive]}>
+            {isInCollection ? '✓ In Collection' : '+ Collection'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionBtn, isInWishlist && styles.actionBtnActive]}
+          onPress={() => isInWishlist ? removeFromWishlist.mutate() : addToWishlist.mutate()}
+          disabled={addToWishlist.isPending || removeFromWishlist.isPending}
+        >
+          <Text style={[styles.actionBtnText, isInWishlist && styles.actionBtnTextActive]}>
+            {isInWishlist ? '♥ Wishlisted' : '♡ Wishlist'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: 100 },
-  loading: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
+  root: { flex: 1, backgroundColor: colors.bgPrimary },
+  container: { flex: 1 },
+  content: { paddingBottom: 120 },
+  loading: { flex: 1, backgroundColor: colors.bgPrimary, alignItems: 'center', justifyContent: 'center' },
   errorText: { color: colors.textSecondary, fontSize: typography.base },
-  hero: { position: 'relative', height: 300 },
+
+  hero: { position: 'relative', height: 320 },
   heroImage: { width: '100%', height: '100%' },
-  heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
-  heroContent: { position: 'absolute', bottom: spacing.md, left: spacing.md, right: 70 },
-  spiritName: { fontSize: typography['2xl'], fontWeight: '800', color: '#fff', lineHeight: 30 },
-  distilleryName: { fontSize: typography.base, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  heroContent: { position: 'absolute', bottom: spacing.md, left: spacing.md, right: 80 },
+  spiritName: { ...textStyles.title1, color: colors.textPrimary, lineHeight: 32 },
+  distilleryName: { ...textStyles.footnote, color: 'rgba(255,255,255,0.65)', marginTop: 4 },
+
   matchPosition: { position: 'absolute', top: spacing.md, right: spacing.md },
-  matchBadge: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center' },
-  matchScore: { fontSize: typography.xl, fontWeight: '900', color: colors.background, lineHeight: 24 },
-  matchLabel: { fontSize: 7, fontWeight: '800', color: colors.background, letterSpacing: 0.5 },
-  statsRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border },
-  stat: { flex: 1, alignItems: 'center', paddingVertical: spacing.md },
-  statValue: { fontSize: typography.base, fontWeight: '700', color: colors.textPrimary },
-  statLabel: { fontSize: typography.xs, color: colors.textSecondary, marginTop: 2 },
+  quizPrompt: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    backgroundColor: 'rgba(200,150,42,0.85)',
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    alignItems: 'center',
+  },
+  quizPromptText: { color: colors.bgPrimary, fontWeight: '700', fontSize: typography.xs },
+  quizPromptSub: { color: colors.bgPrimary, fontSize: 10, opacity: 0.8 },
+
+  statsRow: {
+    flexDirection: 'row',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.bgSurface1,
+  },
+  stat: { flex: 1, alignItems: 'center', paddingVertical: spacing.md, paddingHorizontal: 4 },
+  statValue: { ...textStyles.headline, color: colors.textPrimary },
+  statLabel: { ...textStyles.caption2, color: colors.textSecondary, marginTop: 2 },
+
   section: { paddingHorizontal: spacing.md, paddingTop: spacing.lg },
-  sectionTitle: { fontSize: typography.lg, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.sm },
-  flavorSection: {},
-  flavorRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  flavorLabel: { width: 52, fontSize: typography.sm, color: colors.textSecondary },
-  flavorBarBg: { flex: 1, height: 6, backgroundColor: colors.surface, borderRadius: radius.full, overflow: 'hidden' },
-  flavorBarFill: { height: '100%', backgroundColor: colors.amber, borderRadius: radius.full },
-  flavorValue: { width: 28, textAlign: 'right', fontSize: typography.xs, color: colors.textSecondary },
-  description: { fontSize: typography.base, color: colors.textSecondary, lineHeight: 22 },
+  sectionTitle: { ...textStyles.title3, color: colors.textPrimary, marginBottom: spacing.sm },
+  wheelWrap: { alignItems: 'center' },
+  description: { ...textStyles.body, color: colors.textSecondary, lineHeight: 22 },
+
+  reviewCard: {
+    backgroundColor: colors.bgSurface1,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  reviewHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 6 },
+  reviewUser: { ...textStyles.footnote, color: colors.textPrimary, fontWeight: '600', flex: 1 },
+  reviewScore: { ...textStyles.footnote, color: colors.textSecondary },
+  reviewNotes: { ...textStyles.footnote, color: colors.textSecondary, lineHeight: 18 },
+
   reviewButton: {
-    margin: spacing.md,
-    backgroundColor: colors.amber,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.lg,
     paddingVertical: 14,
     borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.accentAmber,
     alignItems: 'center',
-    marginTop: spacing.xl,
   },
-  reviewButtonText: { color: colors.background, fontWeight: '700', fontSize: typography.base },
+  reviewButtonText: { color: colors.accentAmber, fontWeight: '700', fontSize: typography.base },
+
+  stickyBar: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+    backgroundColor: colors.bgSurface1,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  actionBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: radius.md,
+    backgroundColor: colors.bgSurface2,
+    alignItems: 'center',
+  },
+  actionBtnActive: {
+    backgroundColor: colors.accentAmber,
+  },
+  actionBtnText: {
+    color: colors.textSecondary,
+    fontWeight: '700',
+    fontSize: typography.sm,
+  },
+  actionBtnTextActive: {
+    color: colors.bgPrimary,
+  },
 });

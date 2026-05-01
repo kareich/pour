@@ -209,8 +209,8 @@ export function FlavorWheel({
           strokeWidth={1.5}
         />
 
-        {/* User polygon */}
-        {interactive && (
+        {/* User polygon — shown when userFlavor provided (read-only overlay) or interactive */}
+        {(interactive || !!userFlavor) && (
           <Polygon
             points={polygonPoints(userVals, cx, cy, maxR)}
             fill="rgba(52,199,89,0.2)"
@@ -264,7 +264,7 @@ export function FlavorWheel({
           <View style={[styles.legendDot, { backgroundColor: colors.accentAmber }]} />
           <Text style={styles.legendLabel}>Community</Text>
         </View>
-        {interactive && (
+        {(interactive || !!userFlavor) && (
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: colors.scoreHigh }]} />
             <Text style={styles.legendLabel}>Your palate</Text>
