@@ -9,6 +9,7 @@ services:
     name: pour-redis
     plan: starter
     maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
 
   - type: web
     name: pour-api
