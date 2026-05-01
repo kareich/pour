@@ -1,15 +1,17 @@
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import type { CameraView as CameraViewType } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useRef, useState } from 'react';
 import { colors, typography, spacing } from '../lib/theme';
 import { api } from '../lib/api';
 
-type ScanState = 'scanning' | 'loading' | 'error';
+type ScanState = 'scanning' | 'loading' | 'ocr_prompt' | 'ocr_loading' | 'error';
 
 export default function ScanModal() {
   const router = useRouter();
+  const cameraRef = useRef<CameraViewType>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [scanState, setScanState] = useState<ScanState>('scanning');
   const [errorMsg, setErrorMsg] = useState('');
@@ -28,15 +30,38 @@ export default function ScanModal() {
       const result = await api.scan.barcode(barcode);
       router.replace(`/spirit/${result.spirit.id}`);
     } catch {
+      // Barcode not in DB — offer OCR fallback
+      setScanState('ocr_prompt');
+    }
+  }, [router]);
+
+  const handleOcrScan = useCallback(async () => {
+    if (!cameraRef.current) return;
+    setScanState('ocr_loading');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.6 });
+      if (!photo?.base64) throw new Error('No image data');
+
+      const result = await api.scan.ocr(photo.base64);
+      router.replace(`/spirit/${result.spirit.id}`);
+    } catch {
       setScanState('error');
-      setErrorMsg('Bottle not found. Try scanning the label instead.');
+      setErrorMsg('Label scan failed. Try better lighting or search by name.');
       setTimeout(() => {
         setScanState('scanning');
         scanning.current = true;
         lastScanned.current = null;
-      }, 2000);
+      }, 2500);
     }
   }, [router]);
+
+  const resetToScanning = useCallback(() => {
+    setScanState('scanning');
+    scanning.current = true;
+    lastScanned.current = null;
+  }, []);
 
   if (!permission?.granted) {
     return (
@@ -55,6 +80,7 @@ export default function ScanModal() {
   return (
     <View style={styles.container}>
       <CameraView
+        ref={cameraRef}
         style={StyleSheet.absoluteFillObject}
         facing="back"
         onBarcodeScanned={scanState === 'scanning' ? handleBarcode : undefined}
@@ -69,13 +95,32 @@ export default function ScanModal() {
           <View style={[styles.corner, styles.bottomLeft]} />
           <View style={[styles.corner, styles.bottomRight]} />
         </View>
-        <Text style={styles.hint}>Point at the barcode on the bottle</Text>
+        <Text style={styles.hint}>
+          {scanState === 'ocr_prompt'
+            ? 'No barcode match — try scanning the label'
+            : 'Point at the barcode on the bottle'}
+        </Text>
       </View>
 
-      {scanState === 'loading' && (
+      {(scanState === 'loading' || scanState === 'ocr_loading') && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={colors.amber} />
-          <Text style={styles.loadingText}>Identifying bottle...</Text>
+          <Text style={styles.loadingText}>
+            {scanState === 'ocr_loading' ? 'Reading label...' : 'Identifying bottle...'}
+          </Text>
+        </View>
+      )}
+
+      {scanState === 'ocr_prompt' && (
+        <View style={styles.ocrPrompt}>
+          <Text style={styles.ocrPromptTitle}>Barcode not found</Text>
+          <Text style={styles.ocrPromptSub}>Point at the front label and tap to scan</Text>
+          <TouchableOpacity style={styles.ocrButton} onPress={handleOcrScan}>
+            <Text style={styles.ocrButtonText}>Scan Label</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.ocrRetry} onPress={resetToScanning}>
+            <Text style={styles.ocrRetryText}>Try barcode again</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -126,6 +171,28 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   loadingText: { color: colors.textPrimary, fontSize: typography.base },
+  ocrPrompt: {
+    position: 'absolute',
+    bottom: 100,
+    left: spacing.xl,
+    right: spacing.xl,
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  ocrPromptTitle: { color: colors.textPrimary, fontSize: typography.lg, fontWeight: '700' },
+  ocrPromptSub: { color: 'rgba(255,255,255,0.6)', fontSize: typography.sm, textAlign: 'center' },
+  ocrButton: {
+    backgroundColor: colors.amber,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: 14,
+    borderRadius: 10,
+    marginTop: spacing.sm,
+    width: '100%',
+    alignItems: 'center',
+  },
+  ocrButtonText: { color: colors.background, fontWeight: '700', fontSize: typography.base },
+  ocrRetry: { marginTop: spacing.xs },
+  ocrRetryText: { color: 'rgba(255,255,255,0.5)', fontSize: typography.sm },
   errorBanner: {
     position: 'absolute',
     bottom: 120,
