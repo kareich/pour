@@ -2,7 +2,6 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
   Modal, Pressable, ActivityIndicator,
 } from 'react-native';
-import Slider from '@react-native-community/slider';
 import { FlashList } from '@shopify/flash-list';
 import { useQuery } from '@tanstack/react-query';
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -104,26 +103,27 @@ function FilterSheet({
             ))}
           </ScrollView>
 
-          {/* ABV Range */}
-          <Text style={styles.filterLabel}>ABV  <Text style={styles.filterValue}>{local.abvMin}% – {local.abvMax}%</Text></Text>
-          <Text style={styles.sliderSubLabel}>Min {local.abvMin}%</Text>
-          <Slider
-            style={styles.slider}
-            minimumValue={35} maximumValue={70} step={1}
-            value={local.abvMin}
-            onValueChange={(v) => update('abvMin', Math.min(v, local.abvMax - 1))}
-            minimumTrackTintColor={colors.amber} maximumTrackTintColor={colors.border}
-            thumbTintColor={colors.amber}
-          />
-          <Text style={styles.sliderSubLabel}>Max {local.abvMax}%</Text>
-          <Slider
-            style={styles.slider}
-            minimumValue={35} maximumValue={80} step={1}
-            value={local.abvMax}
-            onValueChange={(v) => update('abvMax', Math.max(v, local.abvMin + 1))}
-            minimumTrackTintColor={colors.amber} maximumTrackTintColor={colors.border}
-            thumbTintColor={colors.amber}
-          />
+          {/* ABV Range — preset chips */}
+          <Text style={styles.filterLabel}>ABV Range</Text>
+          <View style={styles.optionRow}>
+            {([
+              { label: 'Any', min: 0, max: 100 },
+              { label: 'Under 45%', min: 0, max: 45 },
+              { label: '45–55%', min: 45, max: 55 },
+              { label: '55%+', min: 55, max: 100 },
+            ] as const).map(({ label, min, max }) => {
+              const active = local.abvMin === min && local.abvMax === max;
+              return (
+                <TouchableOpacity
+                  key={label}
+                  style={[styles.optionChip, active && styles.optionChipActive]}
+                  onPress={() => { update('abvMin', min); update('abvMax', max); }}
+                >
+                  <Text style={[styles.optionText, active && styles.optionTextActive]}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
 
           {/* Community Rating */}
           <Text style={styles.filterLabel}>Community Rating</Text>

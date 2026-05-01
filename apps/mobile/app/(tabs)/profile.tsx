@@ -47,7 +47,7 @@ export default function ProfileScreen() {
         <Text style={styles.sectionTitle}>Taste Profile</Text>
         {profile ? (
           Object.entries(FLAVOR_LABELS).map(([key, label]) => (
-            <FlavorBar key={key} label={label} value={(profile as Record<string, number>)[key] ?? 0.5} />
+            <FlavorBar key={key} label={label} value={(profile as unknown as Record<string, number>)[key] ?? 0.5} />
           ))
         ) : (
           <TouchableOpacity style={styles.quizButton} onPress={() => router.push('/quiz')}>

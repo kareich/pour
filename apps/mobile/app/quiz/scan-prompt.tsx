@@ -24,8 +24,8 @@ export default function ScanPromptScreen() {
   useEffect(() => {
     opacity.value = withRepeat(
       withSequence(
-        withTiming(0.35, { duration: 900, easing: Easing.inOut(Easing.sine) }),
-        withTiming(1, { duration: 900, easing: Easing.inOut(Easing.sine) }),
+        withTiming(0.35, { duration: 900, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1, { duration: 900, easing: Easing.inOut(Easing.sin) }),
       ),
       -1,
       false,
