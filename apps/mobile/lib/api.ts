@@ -94,6 +94,7 @@ export const api = {
       score: number;
       flavor: { sweet: number; smoke: number; fruit: number; grain: number; spice: number; floral: number; body: number };
       notes?: string | null;
+      drinkingContext?: 'neat' | 'rocks' | 'cocktail' | null;
     }) => request<Rating>('/ratings', { method: 'POST', body: JSON.stringify(data) }),
   },
 };

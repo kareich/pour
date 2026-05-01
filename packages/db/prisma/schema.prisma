@@ -162,7 +162,8 @@ model Rating {
   flavorSpice Float    @default(0.4) @map("flavor_spice")
   flavorFloral Float   @default(0.2) @map("flavor_floral")
   flavorBody  Float    @default(0.5) @map("flavor_body")
-  notes       String?
+  notes            String?
+  drinkingContext  String?  @map("drinking_context")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

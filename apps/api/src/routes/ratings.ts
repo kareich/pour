@@ -10,7 +10,7 @@ export async function ratingsRoutes(fastify: FastifyInstance) {
     const parsed = SubmitRatingSchema.safeParse(request.body);
     if (!parsed.success) return reply.status(400).send({ error: 'Invalid data', details: parsed.error.issues });
 
-    const { spiritId, score, flavor, notes } = parsed.data;
+    const { spiritId, score, flavor, notes, drinkingContext } = parsed.data;
 
     const spirit = await prisma.spirit.findUnique({ where: { id: spiritId }, select: { id: true } });
     if (!spirit) return reply.status(404).send({ error: 'Spirit not found' });
@@ -23,6 +23,7 @@ export async function ratingsRoutes(fastify: FastifyInstance) {
         flavorGrain: flavor.grain, flavorSpice: flavor.spice, flavorFloral: flavor.floral,
         flavorBody: flavor.body,
         notes: notes ?? null,
+        drinkingContext: drinkingContext ?? null,
       },
       update: {
         score,
@@ -30,6 +31,7 @@ export async function ratingsRoutes(fastify: FastifyInstance) {
         flavorGrain: flavor.grain, flavorSpice: flavor.spice, flavorFloral: flavor.floral,
         flavorBody: flavor.body,
         notes: notes ?? null,
+        drinkingContext: drinkingContext ?? null,
       },
     });
 
@@ -61,6 +63,45 @@ export async function ratingsRoutes(fastify: FastifyInstance) {
         flavorBody: avg('flavorBody'),
       },
     });
+
+    // Recalculate user taste profile — weighted average of rated spirit flavor vectors (weight = score/5)
+    const userRatings = await prisma.rating.findMany({
+      where: { userId },
+      select: {
+        score: true,
+        flavorSweet: true, flavorSmoke: true, flavorFruit: true,
+        flavorGrain: true, flavorSpice: true, flavorFloral: true, flavorBody: true,
+      },
+    });
+
+    if (userRatings.length > 0) {
+      const totalWeight = userRatings.reduce((sum, r) => sum + r.score, 0);
+      const weightedAvg = (field: keyof typeof userRatings[0]) =>
+        userRatings.reduce((sum, r) => sum + (r[field] as number) * r.score, 0) / totalWeight;
+
+      await prisma.tasteProfile.upsert({
+        where: { userId },
+        create: {
+          userId,
+          sweet: weightedAvg('flavorSweet'),
+          smoke: weightedAvg('flavorSmoke'),
+          fruit: weightedAvg('flavorFruit'),
+          grain: weightedAvg('flavorGrain'),
+          spice: weightedAvg('flavorSpice'),
+          floral: weightedAvg('flavorFloral'),
+          body: weightedAvg('flavorBody'),
+        },
+        update: {
+          sweet: weightedAvg('flavorSweet'),
+          smoke: weightedAvg('flavorSmoke'),
+          fruit: weightedAvg('flavorFruit'),
+          grain: weightedAvg('flavorGrain'),
+          spice: weightedAvg('flavorSpice'),
+          floral: weightedAvg('flavorFloral'),
+          body: weightedAvg('flavorBody'),
+        },
+      });
+    }
 
     // Sync updated avg_rating + rating_count to Typesense (best-effort, non-blocking)
     typesenseClient.collections(SPIRITS_COLLECTION).documents().upsert({

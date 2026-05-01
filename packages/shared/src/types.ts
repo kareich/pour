@@ -55,6 +55,7 @@ export interface Rating {
   score: number;
   flavor: FlavorProfile;
   notes: string | null;
+  drinkingContext: 'neat' | 'rocks' | 'cocktail' | null;
   createdAt: string;
 }
 

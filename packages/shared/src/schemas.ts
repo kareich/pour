@@ -25,7 +25,8 @@ export const SubmitRatingSchema = z.object({
   spiritId: z.string().uuid(),
   score: z.number().int().min(1).max(5),
   flavor: FlavorProfileSchema,
-  notes: z.string().max(500).nullable().optional(),
+  notes: z.string().max(100).nullable().optional(),
+  drinkingContext: z.enum(['neat', 'rocks', 'cocktail']).nullable().optional(),
 });
 
 export const AddToCollectionSchema = z.object({
