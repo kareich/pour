@@ -7,7 +7,7 @@ databases:
 services:
   - type: redis
     name: pour-redis
-    plan: basic-256mb
+    plan: starter
     maxmemoryPolicy: allkeys-lru
     ipAllowList: []
 
