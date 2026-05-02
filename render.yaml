@@ -16,7 +16,7 @@ services:
     runtime: node
     plan: starter
     rootDir: .
-    buildCommand: npm install -g pnpm@9.15.6 && NODE_ENV=development pnpm install --frozen-lockfile && pnpm run build
+    buildCommand: npm install -g pnpm@9.15.6 && NODE_ENV=development pnpm install --frozen-lockfile && pnpm turbo run build --filter=@pour/api
     preDeployCommand: pnpm --filter @pour/db db:migrate:deploy
     startCommand: node apps/api/dist/server.js
     healthCheckPath: /health
