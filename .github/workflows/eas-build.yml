@@ -50,12 +50,12 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: Build (development)
-        if: github.event_name == 'push' || github.event.inputs.profile == 'development'
+      - name: Build Android (preview)
+        if: github.event_name == 'push'
         working-directory: apps/mobile
-        run: eas build --profile development --platform ${{ github.event_name == 'push' && 'android' || github.event.inputs.platform }} --non-interactive
+        run: eas build --profile preview --platform android --non-interactive
 
-      - name: Build (custom profile)
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.profile != 'development'
+      - name: Build (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
         working-directory: apps/mobile
         run: eas build --profile ${{ github.event.inputs.profile }} --platform ${{ github.event.inputs.platform }} --non-interactive

@@ -16,7 +16,8 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://pour-api.onrender.com/api"
+        "EXPO_PUBLIC_API_URL": "https://pour-api.onrender.com/api",
+        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_c2V0LXdhbGxhYnktODYuY2xlcmsuYWNjb3VudHMuZGV2JA"
       }
     },
     "production": {
