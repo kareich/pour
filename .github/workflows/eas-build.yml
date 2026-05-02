@@ -53,7 +53,7 @@ jobs:
       - name: Build (development)
         if: github.event_name == 'push' || github.event.inputs.profile == 'development'
         working-directory: apps/mobile
-        run: eas build --profile development --platform ${{ github.event.inputs.platform || 'all' }} --non-interactive
+        run: eas build --profile development --platform ${{ github.event_name == 'push' && 'android' || github.event.inputs.platform }} --non-interactive
 
       - name: Build (custom profile)
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.profile != 'development'
