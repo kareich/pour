@@ -1,15 +1,19 @@
 'use strict';
 // Expo Go compat shim for react-native/Libraries/Core/Devtools/getDevServer.
 //
-// expo-router v6 does `.default` on this module at import time. In some Expo Go
-// environments the native layer returns an object instead of a function, so we
-// replace the whole module with a shim whose `.default` is always a callable.
+// Two consumers with different require shapes must both work:
+//   1. expo-router/build/getDevServer/index.native.js:
+//        exports.getDevServer = require('...getDevServer').default   ← needs .default
+//   2. @expo/metro-runtime/src/messageSocket.native.ts:
+//        const getDevServer = require('...getDevServer');
+//        const devServer = getDevServer();                           ← needs direct call
 //
-// We mirror the original logic exactly: use NativeSourceCode.getConstants()
-// (the TurboModule path, correct for RN 0.76+) rather than the old bridge
-// NativeModules.SourceCode.scriptURL. Without this, @expo/metro-runtime's
-// messageSocket throws "Cannot create devtools websocket connections in
-// embedded environments" because bundleLoadedFromServer returns false.
+// Solution: export the function as module.exports (satisfies case 2)
+// AND attach .default to the function object (satisfies case 1).
+// Functions are objects in JS so property assignment is safe.
+//
+// NativeSourceCode access: use getConstants() (TurboModule path, RN 0.76+).
+// Deep-import deprecation warning is harmless — it still resolves at runtime.
 
 let _cachedDevServerURL;
 let _cachedFullBundleURL;
@@ -18,9 +22,7 @@ const FALLBACK = 'http://localhost:8081/';
 function getDevServer() {
   if (_cachedDevServerURL === undefined) {
     try {
-      // Same access pattern as the original getDevServer.js in react-native.
       const NativeSourceCode = require('react-native/Libraries/NativeModules/specs/NativeSourceCode');
-      // Handle both ES-module (has .default) and CommonJS shapes.
       const ns = (NativeSourceCode && NativeSourceCode.default) || NativeSourceCode;
       const scriptURL = ns && (ns.getConstants ? ns.getConstants().scriptURL : ns.scriptURL);
       if (scriptURL) {
@@ -43,7 +45,6 @@ function getDevServer() {
   };
 }
 
-Object.defineProperty(exports, '__esModule', { value: true });
-exports.default = getDevServer;
-module.exports = exports;
-module.exports.default = getDevServer;
+// Export as a callable default AND expose .default for ES-module consumers.
+getDevServer.default = getDevServer;
+module.exports = getDevServer;
