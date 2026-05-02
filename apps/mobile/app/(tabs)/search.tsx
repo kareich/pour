@@ -1,8 +1,7 @@
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  Modal, Pressable, ActivityIndicator,
+  Modal, Pressable, ActivityIndicator, FlatList,
 } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
 import { useQuery } from '@tanstack/react-query';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'expo-router';
@@ -305,9 +304,8 @@ export default function SearchScreen() {
 
       {/* Results */}
       {!showAutocomplete && (
-        <FlashList
+        <FlatList
           data={data?.data ?? []}
-          estimatedItemSize={72}
           renderItem={({ item }) => (
             <SpiritRow spirit={item} onPress={() => router.push(`/spirit/${item.id}`)} />
           )}
@@ -320,6 +318,7 @@ export default function SearchScreen() {
               </Text>
             )
           }
+          keyExtractor={(item) => item.id}
         />
       )}
 

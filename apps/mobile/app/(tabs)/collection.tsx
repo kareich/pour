@@ -1,5 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
@@ -197,11 +196,11 @@ export default function CollectionScreen() {
   if (activeTab === 'owned' && viewMode === 'grid') {
     return (
       <View style={styles.container}>
-        <FlashList
+        <FlatList
           data={collection ?? []}
           numColumns={2}
-          estimatedItemSize={220}
           ListHeaderComponent={header}
+          keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <CollectionCard
               entry={item}
@@ -222,10 +221,10 @@ export default function CollectionScreen() {
   if (activeTab === 'owned') {
     return (
       <View style={styles.container}>
-        <FlashList
+        <FlatList
           data={collection ?? []}
-          estimatedItemSize={72}
           ListHeaderComponent={header}
+          keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <CollectionRow
               entry={item}
@@ -245,10 +244,10 @@ export default function CollectionScreen() {
 
   return (
     <View style={styles.container}>
-      <FlashList
+      <FlatList
         data={wishlist ?? []}
-        estimatedItemSize={72}
         ListHeaderComponent={header}
+        keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <WishlistRow
             entry={item}
