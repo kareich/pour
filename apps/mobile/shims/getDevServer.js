@@ -1,8 +1,15 @@
 'use strict';
-// Expo Go compat: index.native.js in expo-router does `.default` on this
-// module at import time. In some Expo Go environments the native layer returns
-// an object instead of a function, crashing with "getDevServer is not a function".
-// This shim re-implements the same logic so `.default` is always a callable.
+// Expo Go compat shim for react-native/Libraries/Core/Devtools/getDevServer.
+//
+// expo-router v6 does `.default` on this module at import time. In some Expo Go
+// environments the native layer returns an object instead of a function, so we
+// replace the whole module with a shim whose `.default` is always a callable.
+//
+// We mirror the original logic exactly: use NativeSourceCode.getConstants()
+// (the TurboModule path, correct for RN 0.76+) rather than the old bridge
+// NativeModules.SourceCode.scriptURL. Without this, @expo/metro-runtime's
+// messageSocket throws "Cannot create devtools websocket connections in
+// embedded environments" because bundleLoadedFromServer returns false.
 
 let _cachedDevServerURL;
 let _cachedFullBundleURL;
@@ -11,13 +18,13 @@ const FALLBACK = 'http://localhost:8081/';
 function getDevServer() {
   if (_cachedDevServerURL === undefined) {
     try {
-      const NativeModules = require('react-native').NativeModules;
-      const scriptURL =
-        NativeModules.SourceCode?.scriptURL ??
-        NativeModules.RCTSourceCode?.scriptURL ??
-        null;
+      // Same access pattern as the original getDevServer.js in react-native.
+      const NativeSourceCode = require('react-native/Libraries/NativeModules/specs/NativeSourceCode');
+      // Handle both ES-module (has .default) and CommonJS shapes.
+      const ns = (NativeSourceCode && NativeSourceCode.default) || NativeSourceCode;
+      const scriptURL = ns && (ns.getConstants ? ns.getConstants().scriptURL : ns.scriptURL);
       if (scriptURL) {
-        const match = scriptURL.match(/^https?:\/\/.*?\//);
+        const match = String(scriptURL).match(/^https?:\/\/.*?\//);
         _cachedDevServerURL = match ? match[0] : null;
         _cachedFullBundleURL = match ? scriptURL : null;
       } else {
@@ -30,7 +37,7 @@ function getDevServer() {
     }
   }
   return {
-    url: _cachedDevServerURL ?? FALLBACK,
+    url: _cachedDevServerURL != null ? _cachedDevServerURL : FALLBACK,
     fullBundleUrl: _cachedFullBundleURL,
     bundleLoadedFromServer: _cachedDevServerURL !== null,
   };
