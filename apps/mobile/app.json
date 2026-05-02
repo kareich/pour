@@ -46,11 +46,7 @@
       ],
       "expo-secure-store",
       "expo-font",
-      ["expo-build-properties", {
-        "android": {
-          "newArchEnabled": false
-        }
-      }]
+      "expo-build-properties"
     ],
     "scheme": "pour",
     "experiments": {
