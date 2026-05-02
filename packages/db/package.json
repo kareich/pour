@@ -2,9 +2,9 @@
   "name": "@pour/db",
   "version": "0.0.1",
   "private": true,
-  "main": "./src/index.ts",
+  "main": "./dist/index.js",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./dist/index.js"
   },
   "scripts": {
     "build": "prisma generate && tsc",
