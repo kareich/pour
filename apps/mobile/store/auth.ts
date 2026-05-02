@@ -30,6 +30,8 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'pour-auth',
       storage: createJSONStorage(() => secureStoreAdapter),
+      // hasSeenWelcome intentionally excluded so welcome slides always show on app launch
+      partialize: (state) => ({ isAgeVerified: state.isAgeVerified, hasCompletedQuiz: state.hasCompletedQuiz }),
     }
   )
 );
