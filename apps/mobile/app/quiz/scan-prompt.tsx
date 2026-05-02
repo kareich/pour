@@ -1,13 +1,5 @@
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
-import { useRef, useEffect } from 'react';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  withSequence,
-  Easing,
-} from 'react-native-reanimated';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Animated, Easing } from 'react-native';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { colors, textStyles, spacing, radius } from '../../lib/theme';
@@ -18,32 +10,25 @@ const CORNER = 24;
 
 export default function ScanPromptScreen() {
   const router = useRouter();
-  const opacity = useSharedValue(1);
-  const scale = useSharedValue(1);
+  const opacity = useRef(new Animated.Value(1)).current;
+  const scale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(0.35, { duration: 900, easing: Easing.inOut(Easing.sin) }),
-        withTiming(1, { duration: 900, easing: Easing.inOut(Easing.sin) }),
-      ),
-      -1,
-      false,
-    );
-    scale.value = withRepeat(
-      withSequence(
-        withTiming(1.03, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      true,
-    );
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.35, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]),
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(scale, { toValue: 1.03, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ]),
+    ).start();
   }, []);
 
-  const frameStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ scale: scale.value }],
-  }));
+  const frameStyle = { opacity, transform: [{ scale }] };
 
   const handleScan = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
