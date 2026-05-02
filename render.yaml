@@ -16,7 +16,7 @@ services:
     runtime: node
     plan: starter
     rootDir: .
-    buildCommand: npm install -g pnpm@9.15.6 && NODE_ENV=development pnpm install --frozen-lockfile && pnpm --filter @pour/db build && pnpm --filter @pour/api build
+    buildCommand: corepack enable && corepack prepare pnpm@9.15.6 --activate && NODE_ENV=development pnpm install --frozen-lockfile && pnpm --filter @pour/db build && pnpm --filter @pour/api build
     startCommand: node apps/api/dist/server.js
     healthCheckPath: /health
     envVars:
