@@ -9,7 +9,7 @@ export default function AgeGateScreen() {
 
   const handleYes = () => {
     setAgeVerified(true);
-    router.replace('/(auth)/sign-in');
+    router.replace('/(auth)/welcome');
   };
 
   const handleNo = () => {
