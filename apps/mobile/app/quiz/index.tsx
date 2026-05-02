@@ -248,6 +248,9 @@ export default function QuizScreen() {
       queryClient.invalidateQueries({ queryKey: ['recommendations'] });
       router.replace('/quiz/reveal');
     },
+    onError: () => {
+      // Error shown inline — user can retry
+    },
   });
 
   const isSelected = (value: string): boolean => {
@@ -292,6 +295,21 @@ export default function QuizScreen() {
         <ActivityIndicator size="large" color={colors.accentAmber} />
         <Text style={styles.loadingTitle}>Building your taste profile…</Text>
         <Text style={styles.loadingBody}>This takes just a moment</Text>
+      </View>
+    );
+  }
+
+  if (submitMutation.isError) {
+    return (
+      <View style={styles.loading}>
+        <Text style={[styles.loadingTitle, { color: colors.error }]}>Couldn't reach the server</Text>
+        <Text style={styles.loadingBody}>Check your connection and try again</Text>
+        <TouchableOpacity
+          style={[styles.nextBtn, { marginTop: spacing.xl, marginHorizontal: 0 }]}
+          onPress={() => submitMutation.reset()}
+        >
+          <Text style={styles.nextBtnText}>Try again</Text>
+        </TouchableOpacity>
       </View>
     );
   }
